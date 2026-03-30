@@ -80,6 +80,27 @@ def init():
         config["providers"]["anthropic"]["api_key"] = anthropic_key
         click.echo("✓ Anthropic key saved")
     
+    gemini_key = click.prompt("Google Gemini API Key", default=config["providers"].get("gemini", {}).get("api_key", ""), hide_input=True)
+    if gemini_key:
+        if "gemini" not in config["providers"]:
+            config["providers"]["gemini"] = {"api_key": "", "default_model": "gemini-2.0-flash"}
+        config["providers"]["gemini"]["api_key"] = gemini_key
+        click.echo("✓ Gemini key saved")
+    
+    bailian_key = click.prompt("Alibaba Bailian (Qwen) API Key", default=config["providers"].get("bailian", {}).get("api_key", ""), hide_input=True)
+    if bailian_key:
+        if "bailian" not in config["providers"]:
+            config["providers"]["bailian"] = {"api_key": "", "default_model": "qwen-plus"}
+        config["providers"]["bailian"]["api_key"] = bailian_key
+        click.echo("✓ Bailian (Qwen) key saved")
+    
+    deepseek_key = click.prompt("DeepSeek API Key", default=config["providers"].get("deepseek", {}).get("api_key", ""), hide_input=True)
+    if deepseek_key:
+        if "deepseek" not in config["providers"]:
+            config["providers"]["deepseek"] = {"api_key": "", "default_model": "deepseek-chat"}
+        config["providers"]["deepseek"]["api_key"] = deepseek_key
+        click.echo("✓ DeepSeek key saved")
+    
     # Save config
     with open(CONFIG_FILE, 'w') as f:
         json.dump(config, f, indent=2)

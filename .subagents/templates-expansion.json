@@ -1,0 +1,8 @@
+{
+  "task": "Add 2 More Templates",
+  "description": "Create AI Dashboard and API Wrapper templates with full manifests",
+  "priority": "high",
+  "status": "pending",
+  "assigned_to": "subagent-2",
+  "created": "2026-03-30T13:30:00Z"
+}

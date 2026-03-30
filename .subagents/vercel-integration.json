@@ -1,0 +1,8 @@
+{
+  "task": "Vercel Deploy Integration",
+  "description": "Add auto-deploy to Vercel after ai-dev build completes",
+  "priority": "high",
+  "status": "pending",
+  "assigned_to": "subagent-1",
+  "created": "2026-03-30T13:30:00Z"
+}

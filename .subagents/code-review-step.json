@@ -1,0 +1,8 @@
+{
+  "task": "Code Review Step",
+  "description": "Add diff view before deployment approval in agent loop",
+  "priority": "medium",
+  "status": "pending",
+  "assigned_to": "subagent-3",
+  "created": "2026-03-30T13:30:00Z"
+}

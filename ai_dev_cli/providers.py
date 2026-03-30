@@ -1,7 +1,7 @@
 """
 AI Dev CLI — LLM Provider Integrations
 
-Supports: OpenAI, Anthropic, Ollama
+Supports: OpenAI, Anthropic, Ollama, Google Gemini, Bailian (Qwen), DeepSeek
 """
 
 import json
@@ -302,6 +302,24 @@ def get_provider(name: str, config: dict) -> Any:
         return OllamaProvider(
             base_url=config.get("base_url", "http://localhost:11434"),
             default_model=config.get("default_model", "llama3")
+        )
+    elif name == "gemini":
+        from .providers_gemini import GeminiProvider
+        return GeminiProvider(
+            api_key=config["api_key"],
+            default_model=config.get("default_model", "gemini-2.0-flash")
+        )
+    elif name == "bailian":
+        from .providers_chinese import BailianProvider
+        return BailianProvider(
+            api_key=config["api_key"],
+            default_model=config.get("default_model", "qwen-plus")
+        )
+    elif name == "deepseek":
+        from .providers_chinese import DeepSeekProvider
+        return DeepSeekProvider(
+            api_key=config["api_key"],
+            default_model=config.get("default_model", "deepseek-chat")
         )
     else:
         raise ValueError(f"Unknown provider: {name}")
