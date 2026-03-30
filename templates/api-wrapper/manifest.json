@@ -1,0 +1,59 @@
+{
+  "name": "api-wrapper",
+  "version": "1.0.0",
+  "description": "REST API wrapper around LLM with authentication and rate limiting",
+  "stack": ["FastAPI", "OpenAI API", "Uvicorn", "Render"],
+  "price_point": "$29/mo",
+  "files": [
+    {
+      "path": "requirements.txt",
+      "description": "Python dependencies"
+    },
+    {
+      "path": "main.py",
+      "description": "FastAPI application entry point"
+    },
+    {
+      "path": "config.py",
+      "description": "Configuration management"
+    },
+    {
+      "path": "routes/__init__.py",
+      "description": "Routes package"
+    },
+    {
+      "path": "routes/completions.py",
+      "description": "LLM completions endpoint"
+    },
+    {
+      "path": "routes/embeddings.py",
+      "description": "Embeddings endpoint"
+    },
+    {
+      "path": "middleware/auth.py",
+      "description": "API key authentication middleware"
+    },
+    {
+      "path": "middleware/rate_limit.py",
+      "description": "Rate limiting middleware"
+    },
+    {
+      "path": ".env.example",
+      "description": "Environment variables template"
+    },
+    {
+      "path": "render.yaml",
+      "description": "Render deployment config"
+    },
+    {
+      "path": "README.md",
+      "description": "API documentation"
+    },
+    {
+      "path": "test.sh",
+      "description": "Test script"
+    }
+  ],
+  "estimated_time_min": 6,
+  "estimated_cost_usd": 0.25
+}

@@ -1,0 +1,71 @@
+{
+  "name": "ai-dashboard",
+  "version": "1.0.0",
+  "description": "Admin dashboard with AI-powered insights and analytics",
+  "stack": ["React", "OpenAI API", "Tailwind CSS", "Recharts", "Vercel"],
+  "price_point": "$19/mo",
+  "files": [
+    {
+      "path": "package.json",
+      "description": "Dependencies and scripts"
+    },
+    {
+      "path": "vite.config.ts",
+      "description": "Vite configuration"
+    },
+    {
+      "path": "tailwind.config.js",
+      "description": "Tailwind CSS config"
+    },
+    {
+      "path": "index.html",
+      "description": "Main HTML entry point"
+    },
+    {
+      "path": "src/main.tsx",
+      "description": "React entry point"
+    },
+    {
+      "path": "src/App.tsx",
+      "description": "Main app component"
+    },
+    {
+      "path": "src/pages/Dashboard.tsx",
+      "description": "Dashboard page with AI insights"
+    },
+    {
+      "path": "src/pages/Analytics.tsx",
+      "description": "Analytics page with charts"
+    },
+    {
+      "path": "src/components/AIInsightCard.tsx",
+      "description": "AI insight card component"
+    },
+    {
+      "path": "src/components/StatsGrid.tsx",
+      "description": "Statistics grid component"
+    },
+    {
+      "path": "src/lib/openai.ts",
+      "description": "OpenAI client setup"
+    },
+    {
+      "path": "src/hooks/useAIInsights.ts",
+      "description": "Hook for fetching AI insights"
+    },
+    {
+      "path": ".env.example",
+      "description": "Environment variables template"
+    },
+    {
+      "path": "vercel.json",
+      "description": "Vercel deployment config"
+    },
+    {
+      "path": "README.md",
+      "description": "Project documentation"
+    }
+  ],
+  "estimated_time_min": 10,
+  "estimated_cost_usd": 0.45
+}
