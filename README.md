@@ -1,6 +1,6 @@
 # AI Dev CLI — Workflow-First CLI for AI Developers
 
-[![PyPI version](https://badge.fury.io/py/ai-dev-cli.svg)](https://badge.fury.io/py/ai-dev-cli)
+[![GitHub](https://img.shields.io/github/stars/SSS-R/ai-dev-cli)](https://github.com/SSS-R/ai-dev-cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > **Your AI development workflow, unified.** Track costs, test prompts, run batches — all from one CLI. Local-first, zero-config.
@@ -115,6 +115,9 @@ pip install ai-dev-cli
 git clone https://github.com/SSS-R/ai-dev-cli.git
 cd ai-dev-cli
 pip install -e .
+
+# Run
+python3 -m ai_dev_cli.cli --help
 ```
 
 ### Requirements
