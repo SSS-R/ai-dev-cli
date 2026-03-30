@@ -21,6 +21,7 @@ from .providers import (
     load_config, get_costs, log_cost, CostEntry,
     get_provider, OpenAIProvider, AnthropicProvider, OllamaProvider
 )
+from .agent import AIAgent
 
 # Config directory
 CONFIG_DIR = Path.home() / ".ai-dev"
@@ -274,6 +275,166 @@ def prompt(prompt_text, model, compare, output_json, verbose, project):
                 
                 if verbose:
                     click.echo(f"   Tokens: {r['response'].total_tokens} | Time: {r['response'].latency_ms/1000:.2f}s | Cost: ${r['response'].cost_usd:.6f}")
+
+
+@cli.command()
+@click.argument('description')
+@click.option('--name', default=None, help='Project name (auto-generated if not provided)')
+@click.option('--template', default=None, help='Use a pre-built template')
+@click.option('--output-dir', default=None, help='Output directory (default: current directory)')
+@click.option('--no-approval', is_flag=True, help='Skip approval prompt (not recommended)')
+@click.option('--verbose', is_flag=True, help='Show detailed progress')
+def build(description, name, template, output_dir, no_approval, verbose):
+    """Build a complete software project autonomously.
+    
+    Agent will: Plan → Code → Test → Deploy
+    
+    Example:
+      ai-dev build "Tweet summarizer SaaS with Stripe"
+      ai-dev build "AI dashboard" --name my-dashboard
+    """
+    import random
+    from pathlib import Path
+    
+    click.echo("🤖 AI Dev Agent — Autonomous Build")
+    click.echo("=" * 60)
+    
+    # Generate project name if not provided
+    if not name:
+        words = description.lower().split()[:3]
+        name = "-".join(w.strip(".,!?") for w in words)
+        name = name.replace(" ", "-")[:50]
+    
+    # Set output directory
+    output_path = Path(output_dir) if output_dir else Path.cwd() / name
+    
+    # Load template if specified
+    if template:
+        click.echo(f"📦 Using template: {template}")
+        # TODO: Load template manifest and merge with description
+    
+    click.echo(f"\n📋 Project: {name}")
+    click.echo(f"📝 Description: {description}")
+    click.echo(f"📁 Output: {output_path}")
+    click.echo("=" * 60)
+    
+    try:
+        # Create agent
+        agent = AIAgent(
+            project_name=name,
+            description=description,
+            output_dir=output_path
+        )
+        
+        # PHASE 1: Plan
+        click.echo("\n⏳ PHASE 1: Planning...")
+        plan = agent.plan_build()
+        
+        if verbose:
+            click.echo(f"\n📊 Plan Summary:")
+            click.echo(f"   Files: {len(plan.files)}")
+            click.echo(f"   Tech Stack: {', '.join(plan.tech_stack)}")
+            click.echo(f"   APIs: {', '.join(plan.apis_needed)}")
+            click.echo(f"   Est. Time: {plan.estimated_time_min} min")
+            click.echo(f"   Est. Cost: ${plan.estimated_cost_usd:.2f}")
+        
+        # PHASE 2-5: Execute (with approval)
+        click.echo("\n⏳ PHASE 2-5: Building...")
+        result = agent.execute_build(require_approval=not no_approval)
+        
+        # Display results
+        click.echo("\n" + "=" * 60)
+        if result.success:
+            click.echo("✅ BUILD COMPLETE")
+            click.echo("=" * 60)
+            click.echo(f"📁 Project Path: {result.project_path}")
+            click.echo(f"📄 Files Created: {result.files_created}")
+            click.echo(f"✅ Tests Passed: {result.tests_passed}")
+            click.echo(f"❌ Tests Failed: {result.tests_failed}")
+            if result.deployed_url:
+                click.echo(f"🌐 Deployed: {result.deployed_url}")
+            click.echo(f"⏱️  Total Time: {result.total_time_sec:.1f}s")
+            click.echo(f"💰 Total Cost: ${result.total_cost_usd:.4f}")
+        else:
+            click.echo("❌ BUILD FAILED")
+            click.echo("=" * 60)
+            click.echo(f"Error: {result.error}")
+            click.echo(f"💰 Cost (so far): ${result.total_cost_usd:.4f}")
+        
+        # Log final cost
+        if result.success:
+            cost_entry = CostEntry(
+                timestamp=datetime.now().isoformat(),
+                provider="openai",
+                model="gpt-4o",
+                prompt_tokens=0,  # Agent tracks internally
+                completion_tokens=0,
+                total_tokens=0,
+                cost_usd=result.total_cost_usd,
+                project=name
+            )
+            # Don't log - agent already tracked
+        
+    except Exception as e:
+        click.echo(f"\n❌ Build failed: {str(e)}")
+        if verbose:
+            import traceback
+            traceback.print_exc()
+        sys.exit(1)
+
+
+@cli.command()
+@click.option('--show', default=None, help='Show details for a specific template')
+def templates(show):
+    """List available build templates."""
+    import os
+    
+    templates_dir = Path(__file__).parent.parent / "templates"
+    
+    if show:
+        # Show specific template details
+        manifest_file = templates_dir / show / "manifest.json"
+        if not manifest_file.exists():
+            click.echo(f"❌ Template '{show}' not found")
+            sys.exit(1)
+        
+        with open(manifest_file) as f:
+            manifest = json.load(f)
+        
+        click.echo(f"\n📦 Template: {manifest['name']}")
+        click.echo("=" * 60)
+        click.echo(f"📝 Description: {manifest['description']}")
+        click.echo(f"🛠️  Stack: {', '.join(manifest['stack'])}")
+        click.echo(f"💰 Price Point: {manifest['price_point']}")
+        click.echo(f"📄 Files: {len(manifest['files'])}")
+        click.echo(f"⏱️  Est. Time: {manifest['estimated_time_min']} min")
+        click.echo(f"💵 Est. Cost: ${manifest['estimated_cost_usd']:.2f}")
+        click.echo("\n📋 Files:")
+        for file_info in manifest['files']:
+            click.echo(f"   - {file_info['path']} ({file_info['description']})")
+    else:
+        # List all templates
+        click.echo("📦 AI Dev CLI Templates")
+        click.echo("=" * 60)
+        
+        if not templates_dir.exists():
+            click.echo("ℹ️  No templates found")
+            return
+        
+        for template_dir in templates_dir.iterdir():
+            if template_dir.is_dir() and template_dir.name != "__pycache__":
+                manifest_file = template_dir / "manifest.json"
+                if manifest_file.exists():
+                    with open(manifest_file) as f:
+                        manifest = json.load(f)
+                    click.echo(f"\n📦 {manifest['name']}")
+                    click.echo(f"   {manifest['description']}")
+                    click.echo(f"   Stack: {', '.join(manifest['stack'])}")
+                    click.echo(f"   Files: {len(manifest['files'])} | Est: ${manifest['estimated_cost_usd']:.2f}")
+        
+        click.echo("\n💡 Usage:")
+        click.echo("   ai-dev build \"Your idea\" --template <template-name>")
+        click.echo("   ai-dev templates --show <template-name>")
 
 
 @cli.command()

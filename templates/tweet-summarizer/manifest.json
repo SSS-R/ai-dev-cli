@@ -1,0 +1,59 @@
+{
+  "name": "tweet-summarizer",
+  "version": "1.0.0",
+  "description": "SaaS that summarizes Twitter threads using AI",
+  "stack": ["Next.js", "OpenAI API", "Stripe", "Vercel"],
+  "price_point": "$9/mo",
+  "files": [
+    {
+      "path": "package.json",
+      "description": "Dependencies and scripts"
+    },
+    {
+      "path": "next.config.js",
+      "description": "Next.js configuration"
+    },
+    {
+      "path": "tailwind.config.js",
+      "description": "Tailwind CSS config"
+    },
+    {
+      "path": "src/app/page.tsx",
+      "description": "Main landing page"
+    },
+    {
+      "path": "src/app/api/summarize/route.ts",
+      "description": "API route for summarization"
+    },
+    {
+      "path": "src/app/api/webhooks/stripe/route.ts",
+      "description": "Stripe webhook handler"
+    },
+    {
+      "path": "src/lib/openai.ts",
+      "description": "OpenAI client setup"
+    },
+    {
+      "path": "src/lib/stripe.ts",
+      "description": "Stripe client setup"
+    },
+    {
+      "path": ".env.example",
+      "description": "Environment variables template"
+    },
+    {
+      "path": "vercel.json",
+      "description": "Vercel deployment config"
+    },
+    {
+      "path": "README.md",
+      "description": "Project documentation"
+    },
+    {
+      "path": "test.sh",
+      "description": "Test script"
+    }
+  ],
+  "estimated_time_min": 8,
+  "estimated_cost_usd": 0.35
+}
