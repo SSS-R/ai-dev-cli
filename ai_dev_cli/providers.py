@@ -48,13 +48,39 @@ class CostEntry:
 
 
 def load_config() -> dict:
-    """Load configuration from ~/.ai-dev/config.json"""
+    """Load configuration from ~/.ai-dev/config.json with .env fallback."""
+    from dotenv import load_dotenv
+    
+    # Load environment variables from .env file
+    load_dotenv(Path.home() / ".ai-dev" / ".env")
+    load_dotenv(Path.cwd() / ".env")
+    
     config_file = Path.home() / ".ai-dev" / "config.json"
     if not config_file.exists():
-        raise FileNotFoundError("Not initialized. Run 'ai-dev init' first.")
+        # Fallback to environment variables only
+        config = {
+            "providers": {
+                "openai": {"api_key": os.getenv("OPENAI_API_KEY", ""), "default_model": os.getenv("DEFAULT_MODEL", "gpt-4o")},
+                "anthropic": {"api_key": os.getenv("ANTHROPIC_API_KEY", ""), "default_model": "claude-sonnet-4-20250514"},
+                "gemini": {"api_key": os.getenv("GEMINI_API_KEY", ""), "default_model": "gemini-2.0-flash"},
+                "bailian": {"api_key": os.getenv("BAILIAN_API_KEY", ""), "default_model": os.getenv("DEFAULT_MODEL", "qwen-plus")},
+                "deepseek": {"api_key": os.getenv("DEEPSEEK_API_KEY", ""), "default_model": "deepseek-chat"},
+                "ollama": {"base_url": os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"), "default_model": "llama3"}
+            },
+            "defaults": {"project": os.getenv("DEFAULT_PROJECT", "default")}
+        }
+        return config
     
     with open(config_file) as f:
-        return json.load(f)
+        base_config = json.load(f)
+    
+    # Override with environment variables if set
+    for provider in base_config["providers"]:
+        env_key = f"{provider.upper()}_API_KEY"
+        if os.getenv(env_key):
+            base_config["providers"][provider]["api_key"] = os.getenv(env_key)
+    
+    return base_config
 
 
 def log_cost(entry: CostEntry):
