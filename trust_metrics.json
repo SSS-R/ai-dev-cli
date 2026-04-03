@@ -1,0 +1,42 @@
+{
+  "templates": {
+    "tweet-summarizer": {
+      "name": "Tweet Summarizer SaaS",
+      "builds_total": 0,
+      "builds_successful": 0,
+      "success_rate": 0,
+      "avg_cost_usd": 0,
+      "avg_time_sec": 0,
+      "avg_retries": 0,
+      "last_build": null
+    },
+    "ai-dashboard": {
+      "name": "AI Dashboard",
+      "builds_total": 0,
+      "builds_successful": 0,
+      "success_rate": 0,
+      "avg_cost_usd": 0,
+      "avg_time_sec": 0,
+      "avg_retries": 0,
+      "last_build": null
+    },
+    "api-wrapper": {
+      "name": "API Wrapper",
+      "builds_total": 0,
+      "builds_successful": 0,
+      "success_rate": 0,
+      "avg_cost_usd": 0,
+      "avg_time_sec": 0,
+      "avg_retries": 0,
+      "last_build": null
+    }
+  },
+  "global": {
+    "total_builds": 0,
+    "total_successful": 0,
+    "overall_success_rate": 0,
+    "avg_cost_usd": 0,
+    "avg_time_sec": 0,
+    "avg_retries": 0
+  }
+}

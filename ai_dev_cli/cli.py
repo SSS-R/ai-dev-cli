@@ -19,6 +19,7 @@ from .providers import (
 )
 from .agent import AIAgent  # Legacy
 from .multi_agent import OrchestratorAgent  # Multi-agent system
+from .trust_metrics import load_trust_metrics, update_trust_metrics
 
 # Config directory
 CONFIG_DIR = Path.home() / ".ai-dev"
@@ -346,6 +347,23 @@ def build(description, name, template, output_dir, provider, max_retries, verbos
     click.echo("=" * 60)
     
     try:
+        # Show trust metrics before build
+        click.echo("\n📊 Template Trust Metrics:")
+        trust_metrics = load_trust_metrics()
+        if template and template in trust_metrics.get("templates", {}):
+            metrics = trust_metrics["templates"][template]
+            if metrics["builds_total"] > 0:
+                click.echo(f"   Template: {metrics['name']}")
+                click.echo(f"   Success Rate: {metrics['success_rate']:.0f}% ({metrics['builds_successful']}/{metrics['builds_total']} builds)")
+                click.echo(f"   Avg Cost: ${metrics['avg_cost_usd']:.2f}")
+                click.echo(f"   Avg Time: {metrics['avg_time_sec']:.0f}s")
+                click.echo(f"   Avg Retries: {metrics['avg_retries']:.1f}")
+            else:
+                click.echo("   No builds yet for this template")
+        else:
+            click.echo("   Custom build (no historical data)")
+        click.echo("")
+        
         # Use multi-agent system (default)
         orchestrator = OrchestratorAgent(
             project_name=name,
@@ -357,6 +375,9 @@ def build(description, name, template, output_dir, provider, max_retries, verbos
         
         click.echo("\n🚀 Starting multi-agent workflow...")
         result = orchestrator.execute()
+        
+        # Update trust metrics after build
+        update_trust_metrics(template, result)
         
         # Display results from multi-agent system
         click.echo("\n" + "=" * 60)
@@ -371,6 +392,13 @@ def build(description, name, template, output_dir, provider, max_retries, verbos
         click.echo(f"   Retries: {metrics.get('retries', 0)}")
         click.echo(f"   Success Rate: {metrics.get('success_rate', 0)*100:.0f}%")
         click.echo(f"   Agents Used: {', '.join(metrics.get('agents_used', []))}")
+        
+        # Show agent reports (clear role separation)
+        if result.get("agent_reports"):
+            click.echo(f"\n📋 Agent Reports:")
+            for agent_name, report in result["agent_reports"].items():
+                status = "✅" if report.get("success") else "❌"
+                click.echo(f"   {status} {agent_name}")
         
         if not result.get("success"):
             click.echo(f"\n❌ Build failed: {result.get('error', 'Unknown error')}")

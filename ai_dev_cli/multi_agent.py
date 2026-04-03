@@ -151,10 +151,10 @@ class TesterAgent(AgentRole):
         
         if not test_script.exists():
             return {
-                "success": True,
+                "success": False,  # HARD FAIL - no test script means we can't verify
                 "tests_passed": 0,
                 "tests_failed": 0,
-                "error": "No test script found",
+                "error": "No test script found. Create test.sh to verify the build.",
                 "skipped": True
             }
         
@@ -279,21 +279,24 @@ class DeployerAgent(AgentRole):
                 "success": True,
                 "message": "Vercel config found. Run 'vercel' CLI to deploy manually.",
                 "deployed": False,
-                "platform": "vercel"
+                "platform": "vercel",
+                "manual_steps": ["Run 'vercel' to deploy"]
             }
         elif render_config.exists():
             return {
                 "success": True,
                 "message": "Render config found. Push to Git to trigger deploy.",
                 "deployed": False,
-                "platform": "render"
+                "platform": "render",
+                "manual_steps": ["Push to Git repository"]
             }
         else:
             return {
                 "success": True,
                 "message": "No deployment config found. Manual deployment required.",
                 "deployed": False,
-                "platform": None
+                "platform": None,
+                "manual_steps": ["Create deployment config or deploy manually"]
             }
 
 
@@ -303,6 +306,8 @@ class OrchestratorAgent:
     Orchestrates multi-agent workflow.
     
     Loop: Plan → Build → Test → [FAIL?] → Fix → Retest (max 3 retries) → Deploy
+    
+    HARD FAIL: If tests fail after max retries, build fails with specific error.
     """
     project_name: str
     description: str
@@ -320,7 +325,8 @@ class OrchestratorAgent:
             "total_tokens": 0,
             "retries": 0,
             "success_rate": 0.0,
-            "agents_used": []
+            "agents_used": [],
+            "fixer_costs": []
         }
         
         # Get provider config - try bailian first, then fallback
@@ -337,7 +343,7 @@ class OrchestratorAgent:
                 raise ValueError("No LLM provider configured. Run 'ai-dev init' first.")
     
     def execute(self) -> Dict[str, Any]:
-        """Execute full multi-agent workflow."""
+        """Execute full multi-agent workflow with HARD FAIL on test failures."""
         start_time = time.time()
         
         self.results.append(f"🚀 Starting multi-agent build: {self.project_name}")
@@ -379,7 +385,7 @@ class OrchestratorAgent:
         self.metrics["agents_used"].append("Builder")
         self.results.append(f"✅ Built {len(build_result.get('files_created', []))} files")
         
-        # PHASE 3: TEST → FIX LOOP
+        # PHASE 3: TEST → FIX LOOP (with HARD FAIL)
         self.results.append(f"\n🧪 PHASE 3: Testing (max {self.max_retries} retries)...")
         tester = TesterAgent()
         fixer = FixerAgent()
@@ -388,7 +394,7 @@ class OrchestratorAgent:
             "output_dir": str(self.output_dir)
         })
         
-        # Auto-fix loop - only retry if tests actually failed
+        # Auto-fix loop - retry until success OR hard fail
         while not test_result.get("success") and not test_result.get("skipped") and self.metrics["retries"] < self.max_retries:
             self.metrics["retries"] += 1
             self.results.append(f"🔧 Retry {self.metrics['retries']}/{self.max_retries}: Fixing...")
@@ -403,6 +409,7 @@ class OrchestratorAgent:
             if fix_result.get("success"):
                 self.results.append(f"✅ Fixed: {fix_result.get('file_fixed', 'unknown')}")
                 self.metrics["total_cost"] += fix_result.get("cost_usd", 0)
+                self.metrics["fixer_costs"].append({"cost_usd": fix_result.get("cost_usd", 0)})
                 self.metrics["agents_used"].append("Fixer")
                 
                 # Retest
@@ -413,12 +420,16 @@ class OrchestratorAgent:
         
         self.metrics["agents_used"].append("Tester")
         
+        # HARD FAIL if tests failed after max retries
         if test_result.get("skipped"):
-            self.results.append("ℹ️  No test script found (skipped)")
+            self.results.append("⚠️  No test script found (skipped)")
+            # Still count as failure - we can't verify without tests
         elif test_result.get("success"):
             self.results.append("✅ Tests passed")
         else:
-            self.results.append(f"⚠️  Tests failed after {self.metrics['retries']} retries")
+            # HARD FAIL with specific error
+            self.results.append(f"❌ Tests FAILED after {self.metrics['retries']} retries")
+            self.errors.append(f"TesterAgent: {test_result.get('error', 'Unknown test failure')}")
         
         # PHASE 4: DEPLOY (manual)
         self.results.append("\n🚀 PHASE 4: Deploying...")
@@ -433,34 +444,70 @@ class OrchestratorAgent:
         successful_steps = sum([
             1 if plan_result.get("success") else 0,
             1 if build_result.get("success") else 0,
-            1 if (test_result.get("success") or test_result.get("skipped")) else 0,
+            1 if test_result.get("success") else 0,  # Must pass tests
             1 if deploy_result.get("success") else 0
         ])
         self.metrics["success_rate"] = successful_steps / total_steps
         
-        # Determine overall success - fail if tests failed (not skipped)
+        # HARD FAIL if tests failed (no skip allowed)
         overall_success = (
             plan_result.get("success", False) and
             build_result.get("success", False) and
-            (test_result.get("success", False) or test_result.get("skipped", False))
+            test_result.get("success", False)  # Must pass tests, no skip
         )
         
         # Final summary
         total_time = time.time() - start_time
         self.results.append(f"\n{'='*60}")
-        self.results.append(f"{'✅ BUILD COMPLETE' if overall_success else '⚠️  BUILD COMPLETE (with issues)'} in {total_time:.1f}s")
+        if overall_success:
+            self.results.append(f"✅ BUILD COMPLETE in {total_time:.1f}s")
+        else:
+            self.results.append(f"❌ BUILD FAILED in {total_time:.1f}s")
         self.results.append(f"💰 Total cost: ${self.metrics['total_cost']:.4f}")
         self.results.append(f"🔄 Retries: {self.metrics['retries']}")
         self.results.append(f"📊 Success rate: {self.metrics['success_rate']*100:.0f}%")
         self.results.append(f"{'='*60}")
         
+        # Return structured results with clear role separation
         return {
             "success": overall_success,
             "project_path": str(self.output_dir),
             "metrics": self.metrics,
             "results": self.results,
             "errors": self.errors,
-            "deployment": deploy_result
+            "deployment": deploy_result,
+            # Clear role separation - each agent reports independently
+            "agent_reports": {
+                "PlannerAgent": {
+                    "success": plan_result.get("success", False),
+                    "files_planned": len(plan_result.get("plan", {}).get("files", [])),
+                    "cost_usd": plan_result.get("cost_usd", 0),
+                    "tokens_used": plan_result.get("tokens_used", 0)
+                },
+                "BuilderAgent": {
+                    "success": build_result.get("success", False),
+                    "files_created": build_result.get("files_created", []),
+                    "errors": build_result.get("errors", []),
+                    "cost_usd": build_result.get("total_cost", 0)
+                },
+                "TesterAgent": {
+                    "success": test_result.get("success", False),
+                    "tests_passed": test_result.get("tests_passed", 0),
+                    "tests_failed": test_result.get("tests_failed", 0),
+                    "error": test_result.get("error") if not test_result.get("success") else None,
+                    "skipped": test_result.get("skipped", False)
+                },
+                "FixerAgent": {
+                    "fixes_applied": self.metrics.get("agents_used", []).count("Fixer"),
+                    "cost_usd": sum(m.get("cost_usd", 0) for m in self.metrics.get("fixer_costs", []))
+                },
+                "DeployerAgent": {
+                    "config_found": deploy_result.get("platform") is not None,
+                    "platform": deploy_result.get("platform"),
+                    "manual_steps_required": True,
+                    "manual_steps": deploy_result.get("manual_steps", [])
+                }
+            }
         }
     
     def _fail(self, reason: str, result: Dict[str, Any]) -> Dict[str, Any]:
