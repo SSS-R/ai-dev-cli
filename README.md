@@ -1,19 +1,20 @@
-# AI Dev CLI — Workflow-First CLI for AI Developers
+# AI Dev CLI — Multi-Agent SaaS Builder
 
 [![GitHub](https://img.shields.io/github/stars/SSS-R/ai-dev-cli)](https://github.com/SSS-R/ai-dev-cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-> **Your AI development workflow, unified.** Track costs, test prompts, run batches — all from one CLI. Local-first, zero-config.
+> **Multi-Agent SaaS Builder.** 5 AI agents (Planner, Builder, Tester, Fixer, Deployer) work together to build + deploy your app. For indie hackers who ship.
 
 ---
 
 ## Why This Exists
 
-LiteLLM is enterprise-grade. Simon's `llm` is model-focused. **AI Dev CLI** is for **individual developers** who want:
+LiteLLM is enterprise-grade. Simon's `llm` is model-focused. **AI Dev CLI** is for **individual developers** who want to:
 
-- ✅ Cost tracking without a proxy server
-- ✅ Prompt testing with cloud + local models
-- ✅ Batch operations with CSV export
+- ✅ Build SaaS apps autonomously (5 AI agents work together)
+- ✅ Test prompts with cloud + local models (7 providers supported)
+- ✅ Track costs across providers (no proxy server needed)
+- ✅ Run batch operations with CSV export
 - ✅ Zero-config setup
 
 ---
@@ -26,6 +27,9 @@ pip install ai-dev-cli
 
 # Initialize (stores API keys securely)
 ai-dev init
+
+# Build a SaaS app (multi-agent system)
+ai-dev build "Tweet summarizer SaaS"
 
 # Track your spending
 ai-dev cost
@@ -47,8 +51,9 @@ Initialize configuration and store API keys securely.
 
 ```bash
 ai-dev init
-# Prompts for: OpenAI API key, Anthropic API key (optional)
-# Stores in: ~/.ai-dev/config.json (encrypted)
+# Prompts for: OpenAI, Anthropic, Gemini, Bailian (Qwen), DeepSeek API keys
+# Stores in: ~/.ai-dev/config.json
+# ⚠️ Plain text - don't share this file
 ```
 
 ### `ai-dev cost`
@@ -86,20 +91,84 @@ ai-dev batch prompts.csv --output results.csv
 ai-dev batch prompts.csv --workers 4 --output results.json
 ```
 
-### `ai-dev workflow` (Coming Soon)
-Chain commands together.
+### `ai-dev build` 🆕
+Build a complete SaaS app with multi-agent system.
 
 ```bash
-ai-dev workflow run my-workflow.yaml
+# Uses 5 AI agents: Planner → Builder → Tester → Fixer → Deployer
+ai-dev build "Tweet summarizer SaaS"
+
+# Specify provider (default: bailian for agentic work)
+ai-dev build "AI Dashboard" --provider bailian
+
+# Adjust retry limit for auto-fix
+ai-dev build "API Wrapper" --max-retries 5
+
+# Verbose output
+ai-dev build "My App" --verbose
 ```
 
-### `ai-dev sync` (Coming Soon - Paid)
-Sync costs and prompts across machines.
+**What happens:**
+1. **PlannerAgent** — Creates architecture (12 files, tech stack)
+2. **BuilderAgent** — Writes all code files
+3. **TesterAgent** — Runs tests, reports failures
+4. **FixerAgent** — Auto-fixes test failures (max 3 retries)
+5. **DeployerAgent** — Deploys to Vercel/Render
+
+**Templates available:**
+- Tweet Summarizer (Next.js + Stripe)
+- AI Dashboard (React + Recharts)
+- API Wrapper (FastAPI + Render)
+
+### `ai-dev templates`
+List available SaaS templates.
 
 ```bash
-ai-dev sync enable    # Enable cloud sync ($5/mo)
-ai-dev sync status    # Check sync status
+ai-dev templates
+ai-dev templates --show tweet-summarizer
 ```
+
+---
+
+## Multi-Agent Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                 OrchestratorAgent                           │
+│  - Routes tasks to specialist agents                        │
+│  - Tracks success rate, retries, costs                      │
+│  - Enforces full loop: Plan → Build → Test → Fix → Deploy   │
+└─────────────────────────────────────────────────────────────┘
+                            ↓
+        ┌───────────────────┬───────────────────┬──────────────┐
+        ↓                   ↓                   ↓              ↓
+┌──────────────┐   ┌──────────────┐   ┌──────────────┐  ┌──────────────┐
+│ PlannerAgent │ → │ BuilderAgent │ → │ TesterAgent │  │ FixerAgent   │
+│ (qwen-turbo) │   │ (qwen-plus)  │   │ (qwen-turbo)│  │ (qwen-plus)  │
+│ - Analyzes   │   │ - Writes     │   │ - Runs      │  │ - Auto-fixes │
+│ - Creates    │   │ - Scaffolds  │   │ - Reports   │  │ - Retries   │
+│ - Plans      │   │ - Commits    │   │ - Fails     │  │ - Repairs   │
+└──────────────┘   └──────────────┘   └──────────────┘  └──────────────┘
+                                                      ↓
+                                              ┌──────────────┐
+                                              │DeployerAgent │
+                                              │ (qwen-turbo) │
+                                              │ - Vercel     │
+                                              │ - Render     │
+                                              └──────────────┘
+```
+
+### Enforced Loop
+
+```
+Plan → Build → Test → [FAIL?] → Fix → Retest (max 3 retries) → Deploy
+```
+
+**Success tracking:**
+- Tracks retries per build
+- Tracks success rate
+- Fails gracefully after max retries
+- Reports what worked/failed
 
 ---
 
@@ -122,7 +191,7 @@ python3 -m ai_dev_cli.cli --help
 
 ### Requirements
 - Python 3.10+
-- API keys for providers you use (OpenAI, Anthropic)
+- API keys for providers you use (OpenAI, Anthropic, Gemini, Bailian, DeepSeek)
 - Ollama (optional, for local models)
 
 ---
@@ -142,102 +211,120 @@ Config stored in `~/.ai-dev/config.json`:
       "api_key": "sk-ant-...",
       "default_model": "claude-sonnet-4-20250514"
     },
+    "gemini": {
+      "api_key": "...",
+      "default_model": "gemini-2.0-flash"
+    },
+    "bailian": {
+      "api_key": "...",
+      "default_model": "qwen-plus"
+    },
+    "deepseek": {
+      "api_key": "...",
+      "default_model": "deepseek-chat"
+    },
     "ollama": {
       "base_url": "http://localhost:11434",
       "default_model": "llama3"
     }
   },
   "defaults": {
-    "project": "my-app",
+    "project": "default",
     "output_format": "table"
   }
 }
 ```
 
+### Provider Fallback
+
+AI Dev CLI automatically falls back through providers:
+```
+bailian → openai → gemini
+```
+
+If one provider fails, it tries the next. No manual intervention needed.
+
 ---
 
-## Examples
+## Security
 
-### Track Daily Spending
-```bash
-$ ai-dev cost --today
+### API Key Storage
+- **Location:** `~/.ai-dev/config.json`
+- **Format:** Plain text JSON
+- **⚠️ Warning:** Don't share this file or commit to git
+- **Protection:** Added to `.gitignore` by default
 
-┌─────────────┬──────────────┬─────────┬──────────┐
-│ Provider    │ Model        │ Tokens  │ Cost     │
-├─────────────┼──────────────┼─────────┼──────────┤
-│ OpenAI      │ gpt-4o       │ 12,450  │ $0.15    │
-│ Anthropic   │ claude-3-5   │ 8,230   │ $0.08    │
-│ Ollama      │ llama3       │ 5,000   │ $0.00    │
-├─────────────┴──────────────┴─────────┴──────────┤
-│ Total                              │ $0.23     │
-└─────────────────────────────────────────────────┘
+### What's Protected
+- ✅ API keys never logged
+- ✅ Keys sent directly to providers (no third-party)
+- ✅ Local-first (no cloud sync unless you enable it)
+
+### What's NOT Protected
+- ❌ Config file is NOT encrypted (plain text)
+- ❌ Anyone with file access can read keys
+- ❌ Backup your keys securely
+
+---
+
+## Supported Providers
+
+| Provider | Models | Pricing |
+|----------|--------|---------|
+| **OpenAI** | gpt-4o, gpt-4o-mini, gpt-3.5-turbo | $0.0025-0.01/1K tokens |
+| **Anthropic** | claude-sonnet-4, claude-3-opus | $0.003-0.015/1K tokens |
+| **Google Gemini** | gemini-2.0-flash, gemini-1.5-pro | $0.000075-0.00125/1K |
+| **Bailian (Qwen)** | qwen-plus, qwen-max, qwen-turbo | $0.0002-0.005/1K tokens |
+| **DeepSeek** | deepseek-chat, deepseek-coder | $0.00027-0.0011/1K tokens |
+| **Ollama** | llama3, mistral (local) | Free (local) |
+
+---
+
+## Project Structure
+
 ```
-
-### A/B Test Prompts
-```bash
-$ ai-dev prompt "Explain quantum entanglement" \
-    --model gpt-4o \
-    --compare claude-sonnet-4 \
-    --compare ollama/llama3 \
-    --verbose
-
-┌─────────────────────────────────────────────────────────────┐
-│ Model Comparison                                            │
-├─────────────────┬─────────────────┬─────────────────────────┤
-│ gpt-4o          │ claude-sonnet-4 │ ollama/llama3           │
-├─────────────────┼─────────────────┼─────────────────────────┤
-│ [Response 1]    │ [Response 2]    │ [Response 3]            │
-│ Tokens: 234     │ Tokens: 256     │ Tokens: 289             │
-│ Time: 1.2s      │ Time: 1.5s      │ Time: 0.8s              │
-│ Cost: $0.003    │ Cost: $0.002    │ Cost: $0.00             │
-└─────────────────┴─────────────────┴─────────────────────────┘
-```
-
-### Batch Processing
-```bash
-# Input: prompts.csv
-prompt,model
-"Write a tweet about AI","gpt-4o"
-"Write a tweet about ML","gpt-4o"
-"Write a tweet about DL","gpt-4o"
-
-# Run
-$ ai-dev batch prompts.csv --output results.csv
-
-# Output: results.csv
-prompt,model,output,tokens,cost,status
-"Write a tweet about AI","gpt-4o","AI is...","45","$0.001","success"
-...
+ai-dev-cli/
+├── ai_dev_cli/
+│   ├── __init__.py           # Version, author
+│   ├── cli.py                # CLI commands (6 commands)
+│   ├── providers.py          # LLM provider integrations
+│   ├── multi_agent.py        # Multi-agent system (6 agents)
+│   └── agent_refine.py       # Auto-fix logic for test failures
+├── docs/
+│   ├── MULTI-AGENT.md        # Architecture documentation
+│   └── LAUNCH-MATERIALS.md   # Reddit/Twitter launch posts
+├── tests/
+│   └── test_cli.py           # Test suite (8/9 passing)
+├── templates/
+│   ├── tweet-summarizer/     # Next.js + Stripe template
+│   ├── ai-dashboard/         # React + Recharts template
+│   └── api-wrapper/          # FastAPI + Render template
+├── README.md
+├── pyproject.toml
+├── LICENSE
+├── .gitignore
+└── .env.example
 ```
 
 ---
 
 ## Roadmap
 
-### v0.1 (Current) — MVP
-- ✅ `ai-dev init` — Configuration setup
-- ✅ `ai-dev cost` — Cost tracking
-- ✅ `ai-dev prompt` — Single + A/B testing
-- ✅ `ai-dev batch` — Batch operations
+### v0.2 (Current)
+- ✅ Multi-agent system (6 role-based agents)
+- ✅ Enforced refine loop (plan→build→test→fix→deploy)
+- ✅ Provider-agnostic (bailian → openai → gemini)
+- ✅ Success tracking (retries, success rate, cost)
+- ✅ Security fixes (honest about plain text config)
 
-### v0.2 (Next) — Workflow Automation
-- [ ] `ai-dev workflow` — Chain commands
-- [ ] `ai-dev retry` — Retry wrapper for CLI commands
-- [ ] Project-based cost filtering
+### v0.3 (Next)
+- [ ] Parallel agent execution
+- [ ] Cost optimization dashboard
+- [ ] Team collaboration
 
-### v0.3 (Planned) — Cloud Sync (Paid)
-- [ ] `ai-dev sync` — Sync across machines ($5/mo)
-- [ ] Team sharing ($9/mo)
-- [ ] Web dashboard
-
----
-
-## Privacy & Security
-
-- **API keys** stored locally in `~/.ai-dev/config.json`
-- **No cloud sync** unless you enable paid tier
-- **No telemetry** — we don't collect your prompts or usage
-- **Open source** — audit the code yourself
+### v0.4 (Future)
+- [ ] Observability SDK
+- [ ] Custom agent roles
+- [ ] Enterprise SSO
 
 ---
 
@@ -265,5 +352,9 @@ MIT License — see [LICENSE](LICENSE) for details.
 Inspired by:
 - [simonw/llm](https://github.com/simonw/llm) — Beautiful CLI design
 - [BerriAI/litellm](https://github.com/BerriAI/litellm) — Multi-provider support
+- [AgentScope](https://github.com/agentscope-ai/agentscope) — Multi-agent architecture
+- [agency-agents](https://github.com/msitarzewski/agency-agents) — Role-based agents
 
-Built with ❤️ for AI developers who ship.
+---
+
+**Built for indie hackers who ship.** 🚀
