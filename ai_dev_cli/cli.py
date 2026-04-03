@@ -1,27 +1,24 @@
 #!/usr/bin/env python3
 """
-AI Dev CLI — Main Entry Point
+AI Dev CLI — Command Line Interface
 
-Commands:
-  init      Initialize configuration
-  cost      Track LLM spending
-  prompt    Test prompts (single or A/B)
-  batch     Run batch operations from CSV
+Multi-Agent SaaS Builder for Indie Hackers
 """
 
 import sys
 import json
 import csv
+from datetime import datetime
 from pathlib import Path
 import click
-from datetime import datetime
 
 from . import __version__
 from .providers import (
     load_config, get_costs, log_cost, CostEntry,
     get_provider, OpenAIProvider, AnthropicProvider, OllamaProvider
 )
-from .agent import AIAgent
+from .agent import AIAgent  # Legacy
+from .multi_agent import OrchestratorAgent  # Multi-agent system
 
 # Config directory
 CONFIG_DIR = Path.home() / ".ai-dev"
@@ -31,10 +28,10 @@ CONFIG_FILE = CONFIG_DIR / "config.json"
 @click.group()
 @click.version_option(version=__version__)
 def cli():
-    """AI Dev CLI — Workflow-First CLI for AI Developers.
+    """AI Dev CLI — Multi-Agent SaaS Builder.
     
-    Track costs, test prompts, run batches — all from one CLI.
-    Local-first, zero-config.
+    5 AI agents (Planner, Builder, Tester, Fixer, Deployer) work together
+    to build + deploy your app. For indie hackers who ship.
     """
     pass
 
@@ -58,6 +55,9 @@ def init():
             "providers": {
                 "openai": {"api_key": "", "default_model": "gpt-4o"},
                 "anthropic": {"api_key": "", "default_model": "claude-sonnet-4-20250514"},
+                "gemini": {"api_key": "", "default_model": "gemini-2.0-flash"},
+                "bailian": {"api_key": "", "default_model": "qwen-plus"},
+                "deepseek": {"api_key": "", "default_model": "deepseek-chat"},
                 "ollama": {"base_url": "http://localhost:11434", "default_model": "llama3"}
             },
             "defaults": {
@@ -106,10 +106,11 @@ def init():
         json.dump(config, f, indent=2)
     
     click.echo(f"\n✅ Configuration saved to {CONFIG_FILE}")
+    click.echo("\n⚠️  WARNING: Config is plain text. Don't share this file or commit to git.")
     click.echo("\nNext steps:")
-    click.echo("  ai-dev cost       — View your spending")
-    click.echo("  ai-dev prompt     — Test a prompt")
-    click.echo("  ai-dev --help     — See all commands")
+    click.echo("  ai-dev build \"Your SaaS idea\"  — Build with multi-agent system")
+    click.echo("  ai-dev cost                      — View spending")
+    click.echo("  ai-dev prompt \"...\"              — Test a prompt")
 
 
 @cli.command()
@@ -192,11 +193,17 @@ def prompt(prompt_text, model, compare, output_json, verbose, project):
             provider_name = model_name.split('/')[0]
             model = model_name
         else:
-            # Default to OpenAI for short model names
+            # Default to provider based on model name
             if model_name.startswith('gpt') or model_name.startswith('o'):
                 provider_name = 'openai'
             elif model_name.startswith('claude'):
                 provider_name = 'anthropic'
+            elif model_name.startswith('gemini'):
+                provider_name = 'gemini'
+            elif model_name.startswith('qwen'):
+                provider_name = 'bailian'
+            elif model_name.startswith('deepseek'):
+                provider_name = 'deepseek'
             elif model_name.startswith('llama') or model_name.startswith('mistral'):
                 provider_name = 'ollama'
             else:
@@ -303,21 +310,18 @@ def prompt(prompt_text, model, compare, output_json, verbose, project):
 @click.option('--name', default=None, help='Project name (auto-generated if not provided)')
 @click.option('--template', default=None, help='Use a pre-built template')
 @click.option('--output-dir', default=None, help='Output directory (default: current directory)')
-@click.option('--no-approval', is_flag=True, help='Skip approval prompt (not recommended)')
+@click.option('--provider', default='bailian', help='LLM provider (bailian, openai, gemini)')
+@click.option('--max-retries', default=3, help='Max auto-fix retries')
 @click.option('--verbose', is_flag=True, help='Show detailed progress')
-def build(description, name, template, output_dir, no_approval, verbose):
-    """Build a complete software project autonomously.
+def build(description, name, template, output_dir, provider, max_retries, verbose):
+    """Build a complete SaaS app with multi-agent system.
     
-    Agent will: Plan → Code → Test → Deploy
-    
-    Example:
-      ai-dev build "Tweet summarizer SaaS with Stripe"
-      ai-dev build "AI dashboard" --name my-dashboard
+    Uses 5 AI agents: Planner → Builder → Tester → Fixer → Deployer
     """
     import random
     from pathlib import Path
     
-    click.echo("🤖 AI Dev Agent — Autonomous Build")
+    click.echo("🤖 AI Dev Multi-Agent System")
     click.echo("=" * 60)
     
     # Generate project name if not provided
@@ -337,64 +341,40 @@ def build(description, name, template, output_dir, no_approval, verbose):
     click.echo(f"\n📋 Project: {name}")
     click.echo(f"📝 Description: {description}")
     click.echo(f"📁 Output: {output_path}")
+    click.echo(f"🤖 Agents: Planner → Builder → Tester → Fixer → Deployer")
+    click.echo(f"🔄 Max retries: {max_retries}")
     click.echo("=" * 60)
     
     try:
-        # Create agent
-        agent = AIAgent(
+        # Use multi-agent system (default)
+        orchestrator = OrchestratorAgent(
             project_name=name,
             description=description,
-            output_dir=output_path
+            output_dir=output_path,
+            max_retries=max_retries,
+            provider=provider
         )
         
-        # PHASE 1: Plan
-        click.echo("\n⏳ PHASE 1: Planning...")
-        plan = agent.plan_build()
+        click.echo("\n🚀 Starting multi-agent workflow...")
+        result = orchestrator.execute()
         
-        if verbose:
-            click.echo(f"\n📊 Plan Summary:")
-            click.echo(f"   Files: {len(plan.files)}")
-            click.echo(f"   Tech Stack: {', '.join(plan.tech_stack)}")
-            click.echo(f"   APIs: {', '.join(plan.apis_needed)}")
-            click.echo(f"   Est. Time: {plan.estimated_time_min} min")
-            click.echo(f"   Est. Cost: ${plan.estimated_cost_usd:.2f}")
-        
-        # PHASE 2-5: Execute (with approval)
-        click.echo("\n⏳ PHASE 2-5: Building...")
-        result = agent.execute_build(require_approval=not no_approval)
-        
-        # Display results
+        # Display results from multi-agent system
         click.echo("\n" + "=" * 60)
-        if result.success:
-            click.echo("✅ BUILD COMPLETE")
-            click.echo("=" * 60)
-            click.echo(f"📁 Project Path: {result.project_path}")
-            click.echo(f"📄 Files Created: {result.files_created}")
-            click.echo(f"✅ Tests Passed: {result.tests_passed}")
-            click.echo(f"❌ Tests Failed: {result.tests_failed}")
-            if result.deployed_url:
-                click.echo(f"🌐 Deployed: {result.deployed_url}")
-            click.echo(f"⏱️  Total Time: {result.total_time_sec:.1f}s")
-            click.echo(f"💰 Total Cost: ${result.total_cost_usd:.4f}")
-        else:
-            click.echo("❌ BUILD FAILED")
-            click.echo("=" * 60)
-            click.echo(f"Error: {result.error}")
-            click.echo(f"💰 Cost (so far): ${result.total_cost_usd:.4f}")
         
-        # Log final cost
-        if result.success:
-            cost_entry = CostEntry(
-                timestamp=datetime.now().isoformat(),
-                provider="openai",
-                model="gpt-4o",
-                prompt_tokens=0,  # Agent tracks internally
-                completion_tokens=0,
-                total_tokens=0,
-                cost_usd=result.total_cost_usd,
-                project=name
-            )
-            # Don't log - agent already tracked
+        # Show step-by-step results from orchestrator
+        for line in result.get("results", [])[-15:]:  # Last 15 lines
+            click.echo(line)
+        
+        metrics = result.get("metrics", {})
+        click.echo(f"\n📊 Metrics:")
+        click.echo(f"   Total Cost: ${metrics.get('total_cost', 0):.4f}")
+        click.echo(f"   Retries: {metrics.get('retries', 0)}")
+        click.echo(f"   Success Rate: {metrics.get('success_rate', 0)*100:.0f}%")
+        click.echo(f"   Agents Used: {', '.join(metrics.get('agents_used', []))}")
+        
+        if not result.get("success"):
+            click.echo(f"\n❌ Build failed: {result.get('error', 'Unknown error')}")
+            sys.exit(1)
         
     except Exception as e:
         click.echo(f"\n❌ Build failed: {str(e)}")
@@ -407,7 +387,7 @@ def build(description, name, template, output_dir, no_approval, verbose):
 @cli.command()
 @click.option('--show', default=None, help='Show details for a specific template')
 def templates(show):
-    """List available build templates."""
+    """List available SaaS templates."""
     import os
     
     templates_dir = Path(__file__).parent.parent / "templates"

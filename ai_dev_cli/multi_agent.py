@@ -7,6 +7,7 @@ Roles:
 - BuilderAgent: Writes code files
 - TesterAgent: Runs tests, reports failures
 - FixerAgent: Auto-fixes test failures
+- DeployerAgent: Checks deployment config (manual deployment)
 
 Loop: Plan → Build → Test → [FAIL?] → Fix → Retest (max 3 retries) → Deploy
 """
@@ -262,27 +263,37 @@ FILE: path/to/file.py
 
 @dataclass
 class DeployerAgent(AgentRole):
-    """Deploys to Vercel/Render."""
+    """Checks deployment config (manual deployment required)."""
     name: str = "Deployer"
-    description: str = "Deploys to hosting platform"
+    description: str = "Checks deployment config (manual deployment)"
     model_preference: str = "qwen-turbo"  # Cheap for deployment
     
     def execute(self, context: Dict[str, Any]) -> Dict[str, Any]:
-        # For now, just check if vercel.json exists
+        # Check if deployment config exists
         output_dir = Path(context.get('output_dir', '.'))
         vercel_config = output_dir / "vercel.json"
+        render_config = output_dir / "render.yaml"
         
         if vercel_config.exists():
             return {
                 "success": True,
-                "message": "Vercel config found. Run 'vercel' to deploy.",
-                "deployed": False  # Would need actual Vercel API
+                "message": "Vercel config found. Run 'vercel' CLI to deploy manually.",
+                "deployed": False,
+                "platform": "vercel"
+            }
+        elif render_config.exists():
+            return {
+                "success": True,
+                "message": "Render config found. Push to Git to trigger deploy.",
+                "deployed": False,
+                "platform": "render"
             }
         else:
             return {
                 "success": True,
-                "message": "No deployment config found",
-                "deployed": False
+                "message": "No deployment config found. Manual deployment required.",
+                "deployed": False,
+                "platform": None
             }
 
 
@@ -312,7 +323,7 @@ class OrchestratorAgent:
             "agents_used": []
         }
         
-        # Get provider config
+        # Get provider config - try bailian first, then fallback
         self.provider_config = self.config["providers"].get(self.provider, {})
         if not self.provider_config or not self.provider_config.get("api_key"):
             # Fallback to next provider
@@ -320,7 +331,10 @@ class OrchestratorAgent:
                 self.provider_config = self.config["providers"].get(fallback, {})
                 if self.provider_config and self.provider_config.get("api_key"):
                     self.provider = fallback
+                    self.results.append(f"⚠️  {self.provider} not configured, falling back to {fallback}")
                     break
+            else:
+                raise ValueError("No LLM provider configured. Run 'ai-dev init' first.")
     
     def execute(self) -> Dict[str, Any]:
         """Execute full multi-agent workflow."""
@@ -374,7 +388,8 @@ class OrchestratorAgent:
             "output_dir": str(self.output_dir)
         })
         
-        while not test_result.get("success") and self.metrics["retries"] < self.max_retries:
+        # Auto-fix loop - only retry if tests actually failed
+        while not test_result.get("success") and not test_result.get("skipped") and self.metrics["retries"] < self.max_retries:
             self.metrics["retries"] += 1
             self.results.append(f"🔧 Retry {self.metrics['retries']}/{self.max_retries}: Fixing...")
             
@@ -398,43 +413,54 @@ class OrchestratorAgent:
         
         self.metrics["agents_used"].append("Tester")
         
-        if test_result.get("success"):
+        if test_result.get("skipped"):
+            self.results.append("ℹ️  No test script found (skipped)")
+        elif test_result.get("success"):
             self.results.append("✅ Tests passed")
         else:
             self.results.append(f"⚠️  Tests failed after {self.metrics['retries']} retries")
         
-        # PHASE 4: DEPLOY
+        # PHASE 4: DEPLOY (manual)
         self.results.append("\n🚀 PHASE 4: Deploying...")
         deployer = DeployerAgent()
         deploy_result = deployer.execute({"output_dir": str(self.output_dir)})
         
         self.metrics["agents_used"].append("Deployer")
+        self.results.append(f"   {deploy_result.get('message', 'Deployment check complete')}")
         
         # Calculate success rate
         total_steps = 4  # Plan, Build, Test, Deploy
         successful_steps = sum([
-            plan_result.get("success", False),
-            build_result.get("success", False),
-            test_result.get("success", False),
-            deploy_result.get("success", False)
+            1 if plan_result.get("success") else 0,
+            1 if build_result.get("success") else 0,
+            1 if (test_result.get("success") or test_result.get("skipped")) else 0,
+            1 if deploy_result.get("success") else 0
         ])
         self.metrics["success_rate"] = successful_steps / total_steps
+        
+        # Determine overall success - fail if tests failed (not skipped)
+        overall_success = (
+            plan_result.get("success", False) and
+            build_result.get("success", False) and
+            (test_result.get("success", False) or test_result.get("skipped", False))
+        )
         
         # Final summary
         total_time = time.time() - start_time
         self.results.append(f"\n{'='*60}")
-        self.results.append(f"✅ BUILD COMPLETE in {total_time:.1f}s")
+        self.results.append(f"{'✅ BUILD COMPLETE' if overall_success else '⚠️  BUILD COMPLETE (with issues)'} in {total_time:.1f}s")
         self.results.append(f"💰 Total cost: ${self.metrics['total_cost']:.4f}")
         self.results.append(f"🔄 Retries: {self.metrics['retries']}")
         self.results.append(f"📊 Success rate: {self.metrics['success_rate']*100:.0f}%")
         self.results.append(f"{'='*60}")
         
         return {
-            "success": self.metrics["success_rate"] >= 0.75,
+            "success": overall_success,
             "project_path": str(self.output_dir),
             "metrics": self.metrics,
             "results": self.results,
-            "errors": self.errors
+            "errors": self.errors,
+            "deployment": deploy_result
         }
     
     def _fail(self, reason: str, result: Dict[str, Any]) -> Dict[str, Any]:

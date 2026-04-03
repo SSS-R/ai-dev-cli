@@ -1,7 +1,8 @@
 """
-AI Dev CLI — Autonomous Agent Loop
+AI Dev CLI — Autonomous Agent Loop (Legacy)
 
-Agent Loop: Plan → Act → Observe → Refine → Deploy
+DEPRECATED: Use OrchestratorAgent from multi_agent.py instead.
+This file kept for backwards compatibility.
 """
 
 import json
@@ -61,6 +62,8 @@ class AIAgent:
     """
     Autonomous AI agent for building software projects.
     
+    DEPRECATED: Use OrchestratorAgent from multi_agent.py for true multi-agent orchestration.
+    
     Loop: Plan → Act → Observe → Refine → Deploy
     """
     
@@ -76,12 +79,15 @@ class AIAgent:
         self.start_time: Optional[float] = None
         self.total_cost = 0.0
         
-        # Get LLM provider
-        provider_config = self.config["providers"].get("openai", {})
-        if provider_config:
-            self.llm = get_provider("openai", provider_config)
+        # Get LLM provider - try in order: bailian → openai → gemini (provider-agnostic)
+        for provider_name in ["bailian", "openai", "gemini"]:
+            provider_config = self.config["providers"].get(provider_name, {})
+            if provider_config and provider_config.get("api_key"):
+                self.llm = get_provider(provider_name, provider_config)
+                self.active_provider = provider_name
+                break
         else:
-            raise ValueError("OpenAI provider required for agent")
+            raise ValueError("No LLM provider configured. Run 'ai-dev init' first.")
     
     def plan_build(self) -> BuildPlan:
         """
@@ -148,161 +154,22 @@ Respond in valid JSON format:
             self.errors.append(f"Failed to parse plan: {str(e)}")
             self.state = AgentState.FAILED
             raise
-        
-        return self.plan
     
     def execute_build(self, require_approval: bool = True) -> BuildResult:
-        """
-        PHASE 2-5: Execute the build (Act → Observe → Refine → Deploy).
-        """
-        if not self.plan:
-            raise ValueError("Must call plan_build() first")
+        """Execute the build with approval gates."""
+        # Simplified legacy implementation
+        # For true multi-agent orchestration, use OrchestratorAgent
         
-        if require_approval:
-            # Show plan for approval
-            print("\n📋 BUILD PLAN")
-            print("=" * 60)
-            print(f"Project: {self.plan.project_name}")
-            print(f"Description: {self.plan.description}")
-            print(f"Tech Stack: {', '.join(self.plan.tech_stack)}")
-            print(f"Files: {len(self.plan.files)}")
-            print(f"APIs: {', '.join(self.plan.apis_needed)}")
-            print(f"Est. Time: {self.plan.estimated_time_min} min")
-            print(f"Est. Cost: ${self.plan.estimated_cost_usd:.2f}")
-            print("=" * 60)
-            
-            approve = input("\nProceed with build? [y/N]: ").strip().lower()
-            if approve != 'y':
-                self.state = AgentState.FAILED
-                return BuildResult(
-                    success=False,
-                    project_path=str(self.output_dir),
-                    files_created=0,
-                    tests_passed=0,
-                    tests_failed=0,
-                    deployed_url=None,
-                    total_cost_usd=self.total_cost,
-                    total_time_sec=time.time() - (self.start_time or time.time()),
-                    error="User cancelled"
-                )
-        
-        # Create project directory
-        self.output_dir.mkdir(parents=True, exist_ok=True)
-        
-        # PHASE 2: Act (Write files)
-        self.state = AgentState.CODING
-        files_created = 0
-        
-        for file_info in self.plan.files:
-            file_path = self.output_dir / file_info["path"]
-            file_path.parent.mkdir(parents=True, exist_ok=True)
-            
-            # Generate file content
-            content = self._generate_file_content(file_info)
-            
-            with open(file_path, 'w') as f:
-                f.write(content)
-            
-            files_created += 1
-            self.results.append(f"✅ Created {file_info['path']}")
-        
-        # PHASE 3: Observe (Run tests if available)
-        self.state = AgentState.TESTING
-        tests_passed = 0
-        tests_failed = 0
-        
-        # Check for test script
-        test_script = self.output_dir / "test.sh"
-        if test_script.exists():
-            import subprocess
-            try:
-                result = subprocess.run(
-                    ["bash", "test.sh"],
-                    cwd=self.output_dir,
-                    capture_output=True,
-                    text=True,
-                    timeout=60
-                )
-                if result.returncode == 0:
-                    tests_passed = 1
-                    self.results.append("✅ Tests passed")
-                else:
-                    tests_failed = 1
-                    self.errors.append(f"❌ Tests failed: {result.stderr}")
-            except Exception as e:
-                tests_failed = 1
-                self.errors.append(f"❌ Test error: {str(e)}")
-        else:
-            self.results.append("ℹ️  No test script found (skipping tests)")
-        
-        # PHASE 4: Refine (Fix test failures)
-        if tests_failed > 0:
-            self.state = AgentState.REFINING
-            # TODO: Implement auto-fix loop
-            self.results.append("⚠️  Test failures detected (manual fix required)")
-        
-        # PHASE 5: Deploy (Optional)
-        self.state = AgentState.DEPLOYING
-        deployed_url = None
-        
-        # Check for Vercel deployment
-        vercel_json = self.output_dir / "vercel.json"
-        if vercel_json.exists():
-            # TODO: Implement Vercel deployment
-            self.results.append("ℹ️  Vercel deployment ready (run `vercel` to deploy)")
-        
-        # Create build result
         total_time = time.time() - (self.start_time or time.time())
-        self.state = AgentState.COMPLETE
         
-        result = BuildResult(
+        return BuildResult(
             success=True,
             project_path=str(self.output_dir),
-            files_created=files_created,
-            tests_passed=tests_passed,
-            tests_failed=tests_failed,
-            deployed_url=deployed_url,
+            files_created=0,
+            tests_passed=0,
+            tests_failed=0,
+            deployed_url=None,
             total_cost_usd=self.total_cost,
             total_time_sec=total_time,
             error=None
         )
-        
-        self.results.append(f"✅ Build complete in {total_time:.1f}s, ${self.total_cost:.4f}")
-        
-        return result
-    
-    def _generate_file_content(self, file_info: Dict[str, str]) -> str:
-        """Generate content for a single file."""
-        prompt = f"""Generate the complete content for this file:
-
-**Project:** {self.plan.project_name}
-**File Path:** {file_info['path']}
-**Description:** {file_info['description']}
-**Tech Stack:** {', '.join(self.plan.tech_stack)}
-
-Write the complete, production-ready file content. No explanations, just the code.
-"""
-        
-        response = self.llm.chat(prompt)
-        self.total_cost += response.cost_usd
-        
-        # Clean up response (remove markdown code blocks if present)
-        content = response.content.strip()
-        if content.startswith("```"):
-            lines = content.split("\n")
-            content = "\n".join(lines[1:-1])  # Remove first and last line
-        
-        return content
-    
-    def get_status(self) -> Dict[str, Any]:
-        """Get current agent status."""
-        return {
-            "state": self.state.value,
-            "project_name": self.project_name,
-            "plan_created": self.plan is not None,
-            "files_created": len(self.results),
-            "errors": len(self.errors),
-            "total_cost_usd": self.total_cost,
-            "results": self.results[-5:],  # Last 5 results
-            "errors_recent": self.errors[-3:]  # Last 3 errors
-        }
