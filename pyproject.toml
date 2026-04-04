@@ -4,17 +4,17 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ai-dev-cli"
-version = "0.1.0"
-description = "Workflow-First CLI for AI Developers — Track costs, test prompts, run batches"
+version = "0.2.0"
+description = "Multi-Agent SaaS Builder for Indie Hackers"
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.10"
 authors = [
     {name = "Rafi", email = "rafi@example.com"}
 ]
-keywords = ["ai", "llm", "cli", "developer-tools", "cost-tracking", "prompt-testing"]
+keywords = ["ai", "llm", "cli", "developer-tools", "multi-agent", "saas-builder"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Environment :: Console",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",

@@ -8,7 +8,8 @@
       "avg_cost_usd": 0,
       "avg_time_sec": 0,
       "avg_retries": 0,
-      "last_build": null
+      "last_build": null,
+      "status": "READY_FOR_TESTING"
     },
     "ai-dashboard": {
       "name": "AI Dashboard",
@@ -18,7 +19,8 @@
       "avg_cost_usd": 0,
       "avg_time_sec": 0,
       "avg_retries": 0,
-      "last_build": null
+      "last_build": null,
+      "status": "READY_FOR_TESTING"
     },
     "api-wrapper": {
       "name": "API Wrapper",
@@ -28,7 +30,8 @@
       "avg_cost_usd": 0,
       "avg_time_sec": 0,
       "avg_retries": 0,
-      "last_build": null
+      "last_build": null,
+      "status": "READY_FOR_TESTING"
     }
   },
   "global": {
@@ -38,5 +41,6 @@
     "avg_cost_usd": 0,
     "avg_time_sec": 0,
     "avg_retries": 0
-  }
+  },
+  "notes": "Trust metrics will be populated after first real build. Run 'ai-dev build' to start tracking."
 }
