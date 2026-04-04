@@ -3,7 +3,7 @@
 [![GitHub](https://img.shields.io/github/stars/SSS-R/ai-dev-cli)](https://github.com/SSS-R/ai-dev-cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-> **Multi-Agent SaaS Builder.** 5 AI agents (Planner, Builder, Tester, Fixer, Deployer) work together to build + deploy your app. For indie hackers who ship.
+> **Multi-Agent SaaS Builder.** 5 AI agents (Planner, Builder, Tester, Fixer, Deployer) build your app automatically. You deploy. For indie hackers who ship.
 
 ---
 
@@ -25,7 +25,7 @@ LiteLLM is enterprise-grade. Simon's `llm` is model-focused. **AI Dev CLI** is f
 # Install
 pip install ai-dev-cli
 
-# Initialize (stores API keys securely)
+# Initialize (stores API keys locally in plain text)
 ai-dev init
 
 # Build a SaaS app (multi-agent system)
@@ -47,13 +47,13 @@ ai-dev batch input.csv --output results.csv
 ## Commands
 
 ### `ai-dev init`
-Initialize configuration and store API keys securely.
+Initialize configuration and store API keys locally.
 
 ```bash
 ai-dev init
 # Prompts for: OpenAI, Anthropic, Gemini, Bailian (Qwen), DeepSeek API keys
 # Stores in: ~/.ai-dev/config.json
-# ⚠️ Plain text - don't share this file
+# ⚠️ Plain text - don't share this file or commit to git
 ```
 
 ### `ai-dev cost`
@@ -111,9 +111,17 @@ ai-dev build "My App" --verbose
 **What happens:**
 1. **PlannerAgent** — Creates architecture (12 files, tech stack)
 2. **BuilderAgent** — Writes all code files
-3. **TesterAgent** — Runs tests, reports failures
+3. **TesterAgent** — Runs tests, reports failures (HARD FAIL if tests fail)
 4. **FixerAgent** — Auto-fixes test failures (max 3 retries)
-5. **DeployerAgent** — Deploys to Vercel/Render
+5. **DeployerAgent** — Checks deployment config (manual deployment required)
+
+**What's automated:**
+- ✅ Plan → Build → Test → Fix loop (fully automated)
+- ✅ Auto-fix on test failures (max 3 retries)
+- ✅ Hard fail if tests fail after retries
+
+**What's manual:**
+- ⚠️  Deployment (run `vercel` or push to Git)
 
 **Templates available:**
 - Tweet Summarizer (Next.js + Stripe)
@@ -137,7 +145,7 @@ ai-dev templates --show tweet-summarizer
 │                 OrchestratorAgent                           │
 │  - Routes tasks to specialist agents                        │
 │  - Tracks success rate, retries, costs                      │
-│  - Enforces full loop: Plan → Build → Test → Fix → Deploy   │
+│  - Enforces full loop: Plan → Build → Test → Fix            │
 └─────────────────────────────────────────────────────────────┘
                             ↓
         ┌───────────────────┬───────────────────┬──────────────┐
@@ -153,15 +161,18 @@ ai-dev templates --show tweet-summarizer
                                               ┌──────────────┐
                                               │DeployerAgent │
                                               │ (qwen-turbo) │
-                                              │ - Vercel     │
-                                              │ - Render     │
+                                              │ - Checks     │
+                                              │   config     │
+                                              │ - Manual     │
+                                              │   deploy     │
                                               └──────────────┘
 ```
 
 ### Enforced Loop
 
 ```
-Plan → Build → Test → [FAIL?] → Fix → Retest (max 3 retries) → Deploy
+Plan → Build → Test → [FAIL?] → Fix → Retest (max 3 retries)
+                                    ↑_______|
 ```
 
 **Success tracking:**
@@ -288,16 +299,16 @@ ai-dev-cli/
 │   ├── cli.py                # CLI commands (6 commands)
 │   ├── providers.py          # LLM provider integrations
 │   ├── multi_agent.py        # Multi-agent system (6 agents)
-│   └── agent_refine.py       # Auto-fix logic for test failures
+│   ├── agent_refine.py       # Auto-fix logic for test failures
+│   └── trust_metrics.py      # Tracks success rate per template
 ├── docs/
 │   ├── MULTI-AGENT.md        # Architecture documentation
 │   └── LAUNCH-MATERIALS.md   # Reddit/Twitter launch posts
-├── tests/
-│   └── test_cli.py           # Test suite (8/9 passing)
 ├── templates/
 │   ├── tweet-summarizer/     # Next.js + Stripe template
 │   ├── ai-dashboard/         # React + Recharts template
 │   └── api-wrapper/          # FastAPI + Render template
+├── trust_metrics.json        # Historical build data
 ├── README.md
 ├── pyproject.toml
 ├── LICENSE
@@ -311,15 +322,18 @@ ai-dev-cli/
 
 ### v0.2 (Current)
 - ✅ Multi-agent system (6 role-based agents)
-- ✅ Enforced refine loop (plan→build→test→fix→deploy)
-- ✅ Provider-agnostic (bailian → openai → gemini)
-- ✅ Success tracking (retries, success rate, cost)
+- ✅ Enforced refine loop (plan→build→test→fix)
+- ✅ HARD FAIL on test failures (no skip allowed)
+- ✅ Provider-agnostic (bailian → openai → gemini fallback)
+- ✅ Trust metrics (success rate, avg cost, avg time, avg retries)
+- ✅ Honest about deployment (manual, not automatic)
 - ✅ Security fixes (honest about plain text config)
 
 ### v0.3 (Next)
 - [ ] Parallel agent execution
 - [ ] Cost optimization dashboard
 - [ ] Team collaboration
+- [ ] Auto-deploy integration (Vercel API)
 
 ### v0.4 (Future)
 - [ ] Observability SDK
